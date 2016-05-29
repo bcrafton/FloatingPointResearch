@@ -66,6 +66,16 @@
 
         result = SOR_num_flops(N, N, cycles) / Stopwatch_read(Q) * 1.0e-6;
         Stopwatch_delete(Q);
+	
+	int i, j;
+	for(i=0; i<N; i++)
+	{
+		for(j=0; j<N; j++)
+		{
+			printf("%f ", G[i][j]);
+		}
+	}
+
         Array2D_double_delete(N, N, G);
         return result;
 
