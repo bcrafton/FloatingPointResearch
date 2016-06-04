@@ -66,8 +66,6 @@ static struct body solar_bodies[] = {
    }
 };
 
-static const int BODIES_SIZE = sizeof(solar_bodies) / sizeof(solar_bodies[0]);
-
 long LoadOpenCLKernel(char const* path, char **buf)
 {
     FILE  *fp;
@@ -162,41 +160,14 @@ int main(int argc, char** argv)
    cl_program program;                 // compute program
    cl_kernel kernel;                   // compute kernel
 
-    // OpenCL device memory for matrices
-   cl_mem d_A;
-   cl_mem d_B;
-   cl_mem d_C;
-
-   // set seed for rand()
-   srand(2014);
+    // OpenCL device memory for bodies
+   cl_mem device_bodies;
  
-   //Allocate host memory for matrices A and B
-   unsigned int size_A = WA * HA;
-   unsigned int mem_size_A = sizeof(float) * size_A;
-   float* h_A = (float*) malloc(mem_size_A);
- 
-   unsigned int size_B = WB * HB;
-   unsigned int mem_size_B = sizeof(float) * size_B;
-   float* h_B = (float*) malloc(mem_size_B);
+   //Allocate host memory for bodies struct
+   unsigned int mem_size_bodies = sizeof(solar_bodies);
+   char* host_bodies = (char*) malloc(mem_size_bodies);
 
-   //Initialize host memory
-   //randomMemInit(h_A, size_A);
-   //randomMemInit(h_B, size_B);
-  
-   int index;
-   for(index=0; index<size_A; index++)
-   {
-      h_A[index] = index;
-   }
-   for(index=0; index<size_B; index++)
-   {
-      h_B[index] = index;
-   }
-
-   //Allocate host memory for the result C
-   unsigned int size_C = WC * HC;
-   unsigned int mem_size_C = sizeof(float) * size_C;
-   float* h_C = (float*) malloc(mem_size_C);
+   memcpy(host_bodies, solar_bodies, mem_size_bodies);
   
    printf("Initializing OpenCL device...\n"); 
 
@@ -235,7 +206,7 @@ int main(int argc, char** argv)
    char *KernelSource;
    long lFileSize;
 
-   lFileSize = LoadOpenCLKernel("matrixmul_kernel.cl", &KernelSource);
+   lFileSize = LoadOpenCLKernel("nbody_kernel.cl", &KernelSource);
    if( lFileSize < 0L ) {
        perror("File read failed");
        return 1;
@@ -262,7 +233,7 @@ int main(int argc, char** argv)
 
    // Create the compute kernel in the program we wish to run
    //
-   kernel = clCreateKernel(program, "matrixMul", &err);
+   kernel = clCreateKernel(program, "bodies_advance", &err);
    if (!kernel || err != CL_SUCCESS)
    {
        printf("Error: Failed to create compute kernel!\n");
@@ -270,11 +241,9 @@ int main(int argc, char** argv)
    }
 
    // Create the input and output arrays in device memory for our calculation
-   d_C = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size_A, NULL, &err);
-   d_A = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size_A, h_A, &err);
-   d_B = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size_B, h_B, &err);
+   device_bodies = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size_bodies, NULL, &err);
 
-   if (!d_A || !d_B || !d_C)
+   if (!device_bodies)
    {
        printf("Error: Failed to allocate device memory!\n");
        exit(1);
@@ -285,13 +254,12 @@ int main(int argc, char** argv)
    //Launch OpenCL kernel
    size_t localWorkSize[2], globalWorkSize[2];
  
-   int wA = WA;
-   int wC = WC;
-   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&d_C);
-   err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), (void *)&d_A);
-   err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&d_B);
-   err |= clSetKernelArg(kernel, 3, sizeof(int), (void *)&wA);
-   err |= clSetKernelArg(kernel, 4, sizeof(int), (void *)&wC);
+   unsigned int num_bodies = sizeof(solar_bodies) / sizeof(solar_bodies[0]);
+   float dt = .01;
+ 
+   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&device_bodies);
+   err |= clSetKernelArg(kernel, 1, sizeof(unsigned int), (void *)&num_bodies);
+   err |= clSetKernelArg(kernel, 2, sizeof(float), (void *)&dt);
 
    if (err != CL_SUCCESS)
    {
@@ -313,7 +281,7 @@ int main(int argc, char** argv)
    }
  
    //Retrieve result from device
-   err = clEnqueueReadBuffer(commands, d_C, CL_TRUE, 0, mem_size_C, h_C, 0, NULL, NULL);
+   err = clEnqueueReadBuffer(commands, device_bodies, CL_TRUE, 0, mem_size_bodies, host_bodies, 0, NULL, NULL);
 
    if (err != CL_SUCCESS)
    {
@@ -322,28 +290,15 @@ int main(int argc, char** argv)
    }
  
    //print out the results
-
-   printf("\n\nMatrix C (Results)\n");
-   int i;
-   for(i = 0; i < size_C; i++)
-   {
-      printf("%f ", h_C[i]);
-      if(((i + 1) % WC) == 0)
-      printf("\n");
-   }
-   printf("\n");
+   //print shit here.
 
   
-   printf("Matrix multiplication completed...\n"); 
+   printf("nbody completed...\n"); 
 
    //Shutdown and cleanup
-   free(h_A);
-   free(h_B);
-   free(h_C);
+   free(host_bodies);
  
-   clReleaseMemObject(d_A);
-   clReleaseMemObject(d_C);
-   clReleaseMemObject(d_B);
+   clReleaseMemObject(device_bodies);
 
    clReleaseProgram(program);
    clReleaseKernel(kernel);
