@@ -17,6 +17,8 @@ bodies_advance(__global char* device_bodies, int num_bodies, float dt)
         r[z].dx[i] = bodies[x].x[i] - bodies[y].x[i];
      }
 
+     
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 }
