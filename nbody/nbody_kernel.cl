@@ -1,25 +1,22 @@
+#define NUM_DIMENSIONS 3
+
 
 __kernel void
 bodies_advance(__global char* device_bodies, int num_bodies, float dt)
 {
-	// how many dimensions do we need?
-	// may need to take more variables for within the loop.
-	// kernel will be a pain in the ass to write.
+	// using 3 dimensions each instance of kernel does its own x,y,z coordinate. 
 	
-	
-	int tx = get_global_id(0); 
-	int ty = get_global_id(1);
+	int x = get_global_id(0); 
+	int y = get_global_id(1);
+	int z = get_global_id(2);
 
-	int i, j;
-	for(i=1; i<M-1; i++)
-	{
-		for(j=1; j<N-1; j++)
-		{
-			if(i == tx && j == ty)
-			{
-				A[i*N + j] = (w/4) * (A[i*N + (j + 1)] + A[i*N + (j - 1)] + A[(i+1)*N + j] + A[(i-1)*N + j]) + (1.0-w) * A[i*N + j];
-			}
-			barrier(CLK_LOCAL_MEM_FENCE);
-		}
-	}
+	int i;
+	for (i = 0; i < NUM_DIMENSIONS; i++)
+     {
+        //r[k].dx[m] = bodies[i].x[m] - bodies[j].x[m];
+        r[z].dx[i] = bodies[x].x[i] - bodies[y].x[i];
+     }
+
+	barrier(CLK_LOCAL_MEM_FENCE);
+
 }

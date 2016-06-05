@@ -1,24 +1,21 @@
-/* The Computer Language Benchmarks Game
-   http://benchmarksgame.alioth.debian.org/
+////////////////////////////////////////////////////////////////////////////////
 
-   contributed by Mark C. Lewis
-   modified slightly by Chad Whipkey
-   converted from java to c++,added sse support, by Branimir Maksimovic
-   converted from c++ to c, by Alexey Medvedchikov 
-*/
-
+#include <fcntl.h>
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <CL/cl.h>
+#include <stdbool.h>
+
 #include <immintrin.h>
 
 #define PI 3.141592653589793
 #define SOLAR_MASS ( 4 * PI * PI )
 #define DAYS_PER_YEAR 365.24
-
-struct body {
-   double x[3], fill, v[3], mass;
-};
 
 static struct body solar_bodies[] = {
    /* sun */
@@ -69,7 +66,59 @@ static struct body solar_bodies[] = {
    }
 };
 
-static const int BODIES_SIZE = sizeof(solar_bodies) / sizeof(solar_bodies[0]);
+long LoadOpenCLKernel(char const* path, char **buf)
+{
+    FILE  *fp;
+    size_t fsz;
+    long   off_end;
+    int    rc;
+
+    /* Open the file */
+    fp = fopen(path, "r");
+    if( NULL == fp ) {
+        return -1L;
+    }
+
+    /* Seek to the end of the file */
+    rc = fseek(fp, 0L, SEEK_END);
+    if( 0 != rc ) {
+        return -1L;
+    }
+
+    /* Byte offset to the end of the file (size) */
+    if( 0 > (off_end = ftell(fp)) ) {
+        return -1L;
+    }
+    fsz = (size_t)off_end;
+
+    /* Allocate a buffer to hold the whole file */
+    *buf = (char *) malloc( fsz+1);
+    if( NULL == *buf ) {
+        return -1L;
+    }
+
+    /* Rewind file pointer to start of file */
+    rewind(fp);
+
+    /* Slurp file into buffer */
+    if( fsz != fread(*buf, 1, fsz, fp) ) {
+        free(*buf);
+        return -1L;
+    }
+
+    /* Close the file */
+    if( EOF == fclose(fp) ) {
+        free(*buf);
+        return -1L;
+    }
+
+
+    /* Make sure the buffer is NUL-terminated, just in case */
+    (*buf)[fsz] = '\0';
+
+    /* Return the file size */
+    return (long)fsz;
+}
 
 void offset_momentum(struct body *bodies, unsigned int nbodies)
 {
@@ -78,77 +127,6 @@ void offset_momentum(struct body *bodies, unsigned int nbodies)
       for (k = 0; k < 3; ++k)
          bodies[0].v[k] -= bodies[i].v[k] * bodies[i].mass
             / SOLAR_MASS;
-}
-
-void bodies_advance(struct body *bodies, unsigned int nbodies, double dt)
-{
-   unsigned int N = (nbodies - 1) * nbodies / 2;
-   static struct {
-      double dx[3], fill;
-   } r[1000];
-   static __attribute__((aligned(16))) double mag[1000];
-   unsigned int i, j, k, m;
-   __m128d dx[3], dsquared, distance, dmag;
-
-   // chunk 1
-   for(k = 0, i = 0; i < nbodies - 1; ++i)
-   {
-      for(j = i + 1; j < nbodies; ++j, ++k)
-      {
-         for ( m = 0; m < 3; ++m)
-         {
-            r[k].dx[m] = bodies[i].x[m] - bodies[j].x[m];
-            //printf("%d %d %d %d\n", k, i, j, m);
-         }
-      }
-   }
-
-   // chunk 2
-   for (i = 0; i < N; i += 2) 
-   {
-      for (m = 0; m < 3; ++m) 
-      {
-         dx[m] = _mm_loadl_pd(dx[m], &r[i].dx[m]);
-         dx[m] = _mm_loadh_pd(dx[m], &r[i+1].dx[m]);
-      }
-
-      dsquared = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-      distance = _mm_cvtps_pd(_mm_rsqrt_ps(_mm_cvtpd_ps(dsquared)));
-
-      for (j = 0; j < 2; ++j)
-      {
-         distance = distance * _mm_set1_pd(1.5)
-            - ((_mm_set1_pd(0.5) * dsquared) * distance)
-            * (distance * distance);
-      }
-
-      dmag = _mm_set1_pd(dt) / (dsquared) * distance;
-      _mm_store_pd(&mag[i], dmag);
-   }
-
-   // chunk 3
-   for (i = 0, k = 0; i < nbodies - 1; ++i)
-   {
-      for ( j = i + 1; j < nbodies; ++j, ++k)
-      {
-         for ( m = 0; m < 3; ++m) 
-         {
-            bodies[i].v[m] -= r[k].dx[m] * bodies[j].mass
-               * mag[k];
-            bodies[j].v[m] += r[k].dx[m] * bodies[i].mass
-               * mag[k];
-         }
-      }
-   }
-
-   // chunk 4
-   for (i = 0; i < nbodies; ++i)
-   {
-      for ( m = 0; m < 3; ++m)
-      {
-         bodies[i].x[m] += dt * bodies[i].v[m];
-      }
-   }
 }
 
 double bodies_energy(struct body *bodies, unsigned int nbodies) {
@@ -174,11 +152,158 @@ double bodies_energy(struct body *bodies, unsigned int nbodies) {
 
 int main(int argc, char** argv)
 {
-   int i, n = atoi(argv[1]);
-   offset_momentum(solar_bodies, BODIES_SIZE);
-   printf("%.9f\n", bodies_energy(solar_bodies, BODIES_SIZE));
-   for (i = 0; i < n; ++i)
-      bodies_advance(solar_bodies, BODIES_SIZE, 0.01);
-   printf("%.9f\n", bodies_energy(solar_bodies, BODIES_SIZE));
+   int err;                            // error code returned from api calls
+
+   cl_device_id device_id;             // compute device id 
+   cl_context context;                 // compute context
+   cl_command_queue commands;          // compute command queue
+   cl_program program;                 // compute program
+   cl_kernel kernel;                   // compute kernel
+
+    // OpenCL device memory for bodies
+   cl_mem device_bodies;
+ 
+   //Allocate host memory for bodies struct
+   unsigned int mem_size_bodies = sizeof(solar_bodies);
+   char* host_bodies = (char*) malloc(mem_size_bodies);
+
+   memcpy(host_bodies, solar_bodies, mem_size_bodies);
+  
+   printf("Initializing OpenCL device...\n"); 
+
+   cl_uint dev_cnt = 0;
+   clGetPlatformIDs(0, 0, &dev_cnt);
+	
+   cl_platform_id platform_ids[100];
+   clGetPlatformIDs(dev_cnt, platform_ids, NULL);
+	
+   // Connect to a compute device
+   int gpu = 1;
+   err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
+   if (err != CL_SUCCESS)
+   {
+       printf("Error: Failed to create a device group!\n");
+       return EXIT_FAILURE;
+   }
+  
+   // Create a compute context 
+   context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+   if (!context)
+   {
+       printf("Error: Failed to create a compute context!\n");
+       return EXIT_FAILURE;
+   }
+
+   // Create a command commands
+   commands = clCreateCommandQueue(context, device_id, 0, &err);
+   if (!commands)
+   {
+       printf("Error: Failed to create a command commands!\n");
+       return EXIT_FAILURE;
+   }
+
+   // Create the compute program from the source file
+   char *KernelSource;
+   long lFileSize;
+
+   lFileSize = LoadOpenCLKernel("nbody_kernel.cl", &KernelSource);
+   if( lFileSize < 0L ) {
+       perror("File read failed");
+       return 1;
+   }
+
+   program = clCreateProgramWithSource(context, 1, (const char **) & KernelSource, NULL, &err);
+   if (!program)
+   {
+       printf("Error: Failed to create compute program!\n");
+       return EXIT_FAILURE;
+   }
+
+   // Build the program executable
+   err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+   if (err != CL_SUCCESS)
+   {
+       size_t len;
+       char buffer[2048];
+       printf("Error: Failed to build program executable!\n");
+       clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+       printf("%s\n", buffer);
+       exit(1);
+   }
+
+   // Create the compute kernel in the program we wish to run
+   //
+   kernel = clCreateKernel(program, "bodies_advance", &err);
+   if (!kernel || err != CL_SUCCESS)
+   {
+       printf("Error: Failed to create compute kernel!\n");
+       exit(1);
+   }
+
+   // Create the input and output arrays in device memory for our calculation
+   device_bodies = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size_bodies, NULL, &err);
+
+   if (!device_bodies)
+   {
+       printf("Error: Failed to allocate device memory!\n");
+       exit(1);
+   }    
+    
+   printf("Running matrix multiplication for matrices A (%dx%d) and B (%dx%d) ...\n", WA,HA,WB,HB); 
+
+   //Launch OpenCL kernel
+   size_t localWorkSize[2], globalWorkSize[2];
+ 
+   unsigned int num_bodies = sizeof(solar_bodies) / sizeof(solar_bodies[0]);
+   float dt = .01;
+ 
+   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&device_bodies);
+   err |= clSetKernelArg(kernel, 1, sizeof(unsigned int), (void *)&num_bodies);
+   err |= clSetKernelArg(kernel, 2, sizeof(float), (void *)&dt);
+
+   if (err != CL_SUCCESS)
+   {
+       printf("Error: Failed to set kernel arguments! %d\n", err);
+       exit(1);
+   }
+ 
+   localWorkSize[0] = 16;
+   localWorkSize[1] = 16;
+   globalWorkSize[0] = 1024;
+   globalWorkSize[1] = 1024;
+ 
+   err = clEnqueueNDRangeKernel(commands, kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+
+   if (err != CL_SUCCESS)
+   {
+       printf("Error: Failed to execute kernel! %d\n", err);
+       exit(1);
+   }
+ 
+   //Retrieve result from device
+   err = clEnqueueReadBuffer(commands, device_bodies, CL_TRUE, 0, mem_size_bodies, host_bodies, 0, NULL, NULL);
+
+   if (err != CL_SUCCESS)
+   {
+       printf("Error: Failed to read output array! %d\n", err);
+       exit(1);
+   }
+ 
+   //print out the results
+   //print shit here.
+
+  
+   printf("nbody completed...\n"); 
+
+   //Shutdown and cleanup
+   free(host_bodies);
+ 
+   clReleaseMemObject(device_bodies);
+
+   clReleaseProgram(program);
+   clReleaseKernel(kernel);
+   clReleaseCommandQueue(commands);
+   clReleaseContext(context);
+
    return 0;
 }
