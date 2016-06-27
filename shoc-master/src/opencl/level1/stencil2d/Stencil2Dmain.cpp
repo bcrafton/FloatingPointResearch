@@ -281,6 +281,30 @@ DoTest( std::string testName,
 
             int timerHandle = Timer::Start();
             (*testStencil)( data, nIters );
+            
+            char path[100];
+
+            static char test_number = 0;
+            char filename[12] = "Stencil2D00";
+
+            filename[11] = 0;
+            filename[10] = test_number%10 + '0';
+            filename[9] = test_number/10 + '0';
+
+            strcpy(path, "/home/cbrian/");
+            strcat(path, filename);
+            strcat(path, ".csv");
+
+            printf("%s %d\n", path, test_number);
+
+            ofstream file;
+            file.open(path);
+			
+            file << data;
+
+            file.close();
+            test_number++;
+	    
             double elapsedTime = Timer::Stop( timerHandle, "OpenCL stencil" );
 
 

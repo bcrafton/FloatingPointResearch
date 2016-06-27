@@ -388,6 +388,32 @@ void runTest(const string& testName, cl_device_id dev, cl_context ctx,
     err = clEnqueueReadBuffer(queue, d_force, true, 0,
             nAtom * sizeof(forceVecType), force, 0, NULL,
             &evTransfer.CLEvent());
+
+    char path[100];
+
+    static char test_number = 0;
+    char filename[5] = "MD00";
+
+    filename[4] = 0;
+    filename[3] = test_number%10 + '0';
+    filename[2] = test_number/10 + '0';
+
+    strcpy(path, "/home/cbrian/");
+    strcat(path, filename);
+    strcat(path, ".csv");
+
+    printf("%s %d\n", path, test_number);
+
+    FILE * fp;
+    fp = fopen(path, "w");
+    int i;
+    for(i=0; i<nAtom; i++)
+    {
+	fprintf(fp, "%f,%f,%f,%f\n", force[i].x, force[i].y, force[i].z, force[i].w);
+    }
+    fclose(fp);
+    test_number++;
+
     CL_CHECK_ERROR(err);
     err = clFinish(queue);
     CL_CHECK_ERROR(err);

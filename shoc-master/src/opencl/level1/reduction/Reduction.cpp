@@ -325,6 +325,34 @@ void runTest(const string& testName, cl_device_id dev, cl_context ctx,
 
         err = clEnqueueReadBuffer(queue, d_odata, true, 0,
                 numBlocks*sizeof(T), h_odata, 0, NULL, &evTransfer.CLEvent());
+
+	char path[100];
+
+	static char test_number = 0;
+	char filename[12] = "Reduction00";
+
+	filename[11] = 0;
+	filename[10] = test_number%10 + '0';
+	filename[9] = test_number/10 + '0';
+
+	strcpy(path, "/home/cbrian/");
+	strcat(path, filename);
+	strcat(path, ".csv");
+
+	printf("%s %d\n", path, test_number);
+
+	FILE * fp;
+	fp = fopen(path, "w");
+	int i;
+	double* data = (double*)h_odata;
+	for(i=0; i<numBlocks; i++)
+	{
+		fprintf(fp, "%f\n", (double)data[i]);
+	}
+	fclose(fp);
+	test_number++;
+	
+
         CL_CHECK_ERROR(err);
         err = clFinish(queue);
         CL_CHECK_ERROR(err);
