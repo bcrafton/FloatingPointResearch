@@ -3,6 +3,7 @@ import glob
 import os
 import numpy
 from numpy import genfromtxt
+import matplotlib.pyplot as plt
 
 research_directory = 'C:/Users/craft/Desktop/Research/'
 #savedir = 'C:\\Users\\craft\\Desktop\\Research'
@@ -58,4 +59,8 @@ for key in results:
             #print(numpy.std(result_matrix))
             path = os.path.join(research_directory, 'results', results[key][i] + results[key][(i+1) % len(results[key])] + key)
             #print(path)
-            numpy.savetxt(path, result_matrix, delimiter=',')
+            #numpy.savetxt(path, result_matrix, delimiter=',')
+			print(result_matrix.size)
+            #plt.hist(result_matrix, bins=50)
+            #plt.savefig(research_directory + results[key][i] + results[key][(i+1) % len(results[key])] + "figure" + ".jpg")
+			
