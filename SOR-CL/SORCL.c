@@ -14,8 +14,8 @@
 #include "constants.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define M 10
-#define N 10
+#define M 100
+#define N 100
 ////////////////////////////////////////////////////////////////////////////////
 
  
@@ -125,12 +125,21 @@ int main(int argc, char** argv)
 	
    // Connect to a compute device
    int gpu = 1;
-   err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
+   err = clGetDeviceIDs(platform_ids[1], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
    if (err != CL_SUCCESS)
    {
        printf("Error: Failed to create a device group!\n");
        return EXIT_FAILURE;
    }
+
+   char* value;
+   size_t valueSize;
+   // print device name
+   clGetDeviceInfo(device_id, CL_DEVICE_NAME, 0, NULL, &valueSize);
+   value = (char*) malloc(valueSize);
+   clGetDeviceInfo(device_id, CL_DEVICE_NAME, valueSize, value, NULL);
+   printf("%d. Device: %s\n", j+1, value);
+   free(value);
   
    // Create a compute context 
    context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
@@ -239,14 +248,19 @@ int main(int argc, char** argv)
  
    //print out the results
 
-   printf("\n\nMatrix C (Results)\n");
+   FILE * fp;
+   fp = fopen("/scratch/crafton.b/SOR.csv", "w");
+   
    for(i = 0; i < size_A; i++)
    {
-      printf("%f ", h_A[i]);
       if(((i + 1) % N) == 0)
-      printf("\n");
+      fprintf(fp, "%f\n", h_A[i]);
+      else
+      fprintf(fp, "%f,", h_A[i]);
    }
-   printf("\n");
+   fprintf(fp, "\n");
+   
+   fclose(fp);
 
   
    printf("SOR completed...\n"); 

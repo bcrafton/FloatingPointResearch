@@ -15,7 +15,7 @@ sor(__global float* A, int M, int N, float w)
 			{
 				A[i*N + j] = (w/4) * (A[i*N + (j + 1)] + A[i*N + (j - 1)] + A[(i+1)*N + j] + A[(i-1)*N + j]) + (1.0-w) * A[i*N + j];
 			}
-			barrier(CLK_LOCAL_MEM_FENCE);
+			barrier(CLK_GLOBAL_MEM_FENCE);
 		}
 	}
 }

@@ -4,24 +4,26 @@ import os
 import numpy
 from numpy import genfromtxt
 import matplotlib.pyplot as plt
+import time
 
-research_directory = 'C:/Users/craft/Desktop/Research/'
-#savedir = 'C:\\Users\\craft\\Desktop\\Research'
+research_directory = os.getcwd() + '\\research\\'
 
 paths = glob.glob(research_directory + '*/*.csv')
 
 results = {}
 
+
 def print_csv(path):
     f = open(path, 'rb')
     reader = csv.reader(f)
     for row in reader:
-        print (row)
+        print(row)
     f.close()
 
+
 for path in paths:
-    #f = open(path, 'rb')
-    #reader = csv.reader(f)
+    # f = open(path, 'rb')
+    # reader = csv.reader(f)
 
     '''
     for row in reader:
@@ -42,11 +44,24 @@ for path in paths:
         results[os.path.basename(path)].append(os.path.basename(os.path.dirname(path)))
     '''
 
-    #f.close()
+    # f.close()
+	
+'''
+rows = []
+for key in results:
+	for company in results[key]:
+		if company not in rows:
+			rows.append(company)
+		
+cols = len(results)
 
-# reason why stencil2d is failing is because csv has no commas!
-#a = genfromtxt(research_directory+'/AMD/Stencil2D00.csv', delimiter=',')
-#print(a)
+equal = numpy.zeros(len(rows)+1, cols + 1)
+
+for i in range(1, len(rows)):
+	equal[i][0] = rows[i]
+for key in 
+
+'''
 
 for key in results:
     data = []
@@ -54,13 +69,26 @@ for key in results:
         path = os.path.join(research_directory, results[key][i], key)
         data.append(genfromtxt(path, delimiter=','))
     for i in range(len(results[key])):
-        result_matrix = numpy.subtract(data[i], data[(i+1) % len(results[key])])
+        result_matrix = numpy.subtract(data[i], data[(i + 1) % len(results[key])])
         if numpy.count_nonzero(result_matrix) != 0:
-            #print(numpy.std(result_matrix))
-            path = os.path.join(research_directory, 'results', results[key][i] + results[key][(i+1) % len(results[key])] + key)
-            #print(path)
-            #numpy.savetxt(path, result_matrix, delimiter=',')
-			print(result_matrix.size)
-            #plt.hist(result_matrix, bins=50)
-            #plt.savefig(research_directory + results[key][i] + results[key][(i+1) % len(results[key])] + "figure" + ".jpg")
+            # print(result_matrix.shape)
+            # print(len(result_matrix.shape))
+            print(results[key][i] + results[key][(i + 1) % len(results[key])] + os.path.splitext(key)[0])
+
+            # get current time
+            t = time.time()
+
+            # write the csv
+            path = os.path.join(research_directory, 'results',
+                                results[key][i] + results[key][(i + 1) % len(results[key])] + key)
+            numpy.savetxt(path, result_matrix, delimiter=',')
+
+            # write the histogram
+            plt.hist(result_matrix, bins=50)
+            path = research_directory + results[key][i] + results[key][(i + 1) % len(results[key])] + \
+                   os.path.splitext(key)[0] + ".jpg"
+            plt.savefig(path)
+            plt.close()
+            print("done, time taken: " + str(time.time() - t))
 			
+
