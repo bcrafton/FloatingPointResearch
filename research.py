@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import time
 
 research_directory = os.getcwd() + '\\research\\'
+results_directory = os.getcwd() + '\\results\\'
 
 paths = glob.glob(research_directory + '*/*.csv')
 
@@ -45,23 +46,29 @@ for path in paths:
     '''
 
     # f.close()
-	
-'''
-rows = []
+
+# we cud make better practices but using order dictionaries in all cases
+# so thay way no chance of amdintel and intelamd
+
+columns = {}
+column_count = 0
 for key in results:
-	for company in results[key]:
-		if company not in rows:
-			rows.append(company)
-		
-cols = len(results)
+    columns[key] = column_count
+    column_count = column_count + 1
+# print(columns)
 
-equal = numpy.zeros(len(rows)+1, cols + 1)
+rows = {}
+row_count = 0
+for key in results:
+    for i in range(len(results[key])):
+        row = results[key][i] + results[key][(i + 1) % len(results[key])]
+        if row not in rows.keys():
+            print(results[key][i])
+            rows[row] = row_count
+            row_count = row_count + 1
+# print(rows)
 
-for i in range(1, len(rows)):
-	equal[i][0] = rows[i]
-for key in 
-
-'''
+difference = numpy.zeros((len(rows)+1, len(columns)+1))
 
 for key in results:
     data = []
@@ -70,17 +77,25 @@ for key in results:
         data.append(genfromtxt(path, delimiter=','))
     for i in range(len(results[key])):
         result_matrix = numpy.subtract(data[i], data[(i + 1) % len(results[key])])
+
+        # difference matrix coordinates
+        row = results[key][i] + results[key][(i + 1) % len(results[key])]
+        col = key
         if numpy.count_nonzero(result_matrix) != 0:
-            # print(result_matrix.shape)
-            # print(len(result_matrix.shape))
+            # set difference equal to 2
+            print(rows[row])
+            print(columns[key])
+            print(difference.shape)
+            difference[rows[row] + 1][columns[key] + 1] = 2
+            '''
+            # print the details
             print(results[key][i] + results[key][(i + 1) % len(results[key])] + os.path.splitext(key)[0])
 
             # get current time
             t = time.time()
 
             # write the csv
-            path = os.path.join(research_directory, 'results',
-                                results[key][i] + results[key][(i + 1) % len(results[key])] + key)
+            path = os.path.join(results_directory, results[key][i] + results[key][(i + 1) % len(results[key])] + key)
             numpy.savetxt(path, result_matrix, delimiter=',')
 
             # write the histogram
@@ -90,5 +105,10 @@ for key in results:
             plt.savefig(path)
             plt.close()
             print("done, time taken: " + str(time.time() - t))
-			
+            '''
+        else:
+            difference[rows[row] + 1][columns[key] + 1] = 1
 
+print(difference)
+print(rows)
+print(columns)
