@@ -81,17 +81,14 @@ for key in results:
         col = key
         if numpy.count_nonzero(result_matrix) != 0:
 
-            largest = numpy.sort(numpy.absolute(result_matrix), axis=None)[-5:]
-            largest_indexes = []
-            for j in largest:
-                largest_indexes.append(get_index(numpy.absolute(result_matrix), j))
-            print(largest_indexes)
+            # print the details
+            print(results[key][i] + results[key][(i + 1) % len(results[key])] + os.path.splitext(key)[0])
+
+            idx = (-numpy.absolute(result_matrix.flatten())).argsort()[:5]
+            print(idx)
 
             # set difference equal to 2
             difference[rows[row] + 1][columns[key] + 1] = 2
-            '''
-            # print the details
-            print(results[key][i] + results[key][(i + 1) % len(results[key])] + os.path.splitext(key)[0])
 
             # get current time
             t = time.time()
@@ -107,7 +104,7 @@ for key in results:
             plt.savefig(path)
             plt.close()
             print("done, time taken: " + str(time.time() - t))
-            '''
+
         else:
             difference[rows[row] + 1][columns[key] + 1] = 1
 
