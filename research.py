@@ -13,15 +13,6 @@ paths = glob.glob(research_directory + '*/*.csv')
 
 results = {}
 
-
-def print_csv(path):
-    f = open(path, 'rb')
-    reader = csv.reader(f)
-    for row in reader:
-        print(row)
-    f.close()
-
-
 for path in paths:
     # f = open(path, 'rb')
     # reader = csv.reader(f)
@@ -70,6 +61,14 @@ for key in results:
 
 difference = numpy.zeros((len(rows)+1, len(columns)+1))
 
+
+def get_index(array, val):
+    array = array.flatten()
+    for i in range(len(array)):
+        if val == array[i]:
+            return i
+
+
 for key in results:
     data = []
     for i in range(len(results[key])):
@@ -77,15 +76,18 @@ for key in results:
         data.append(genfromtxt(path, delimiter=','))
     for i in range(len(results[key])):
         result_matrix = numpy.subtract(data[i], data[(i + 1) % len(results[key])])
-
         # difference matrix coordinates
         row = results[key][i] + results[key][(i + 1) % len(results[key])]
         col = key
         if numpy.count_nonzero(result_matrix) != 0:
+
+            largest = numpy.sort(numpy.absolute(result_matrix), axis=None)[-5:]
+            largest_indexes = []
+            for j in largest:
+                largest_indexes.append(get_index(numpy.absolute(result_matrix), j))
+            print(largest_indexes)
+
             # set difference equal to 2
-            print(rows[row])
-            print(columns[key])
-            print(difference.shape)
             difference[rows[row] + 1][columns[key] + 1] = 2
             '''
             # print the details
@@ -110,5 +112,3 @@ for key in results:
             difference[rows[row] + 1][columns[key] + 1] = 1
 
 print(difference)
-print(rows)
-print(columns)
