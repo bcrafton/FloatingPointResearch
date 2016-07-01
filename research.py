@@ -42,13 +42,16 @@ for path in paths:
 # so thay way no chance of amdintel and intelamd
 
 columns = {}
+columns_inv = {}
 column_count = 0
 for key in results:
     columns[key] = column_count
+    columns_inv[column_count] = key
     column_count = column_count + 1
 # print(columns)
 
 rows = {}
+rows_inv = {}
 row_count = 0
 for key in results:
     for i in range(len(results[key])):
@@ -56,11 +59,16 @@ for key in results:
         if row not in rows.keys():
             print(results[key][i])
             rows[row] = row_count
+            rows_inv[row_count] = row
             row_count = row_count + 1
 # print(rows)
 
-difference = numpy.zeros((len(rows)+1, len(columns)+1))
+difference = a = [['X'] * (len(columns)+1) for i in range(len(rows)+1)]
 
+for i in range(len(rows)):
+    difference[i+1][0] = rows_inv[i]
+for i in range(len(columns)):
+    difference[0][i+1] = columns_inv[i]
 
 def get_index(array, val):
     array = array.flatten()
@@ -74,6 +82,7 @@ for key in results:
     for i in range(len(results[key])):
         path = os.path.join(research_directory, results[key][i], key)
         data.append(genfromtxt(path, delimiter=','))
+    largest_indexes = numpy.array([])
     for i in range(len(results[key])):
         result_matrix = numpy.subtract(data[i], data[(i + 1) % len(results[key])])
         # difference matrix coordinates
@@ -84,11 +93,14 @@ for key in results:
             # print the details
             print(results[key][i] + results[key][(i + 1) % len(results[key])] + os.path.splitext(key)[0])
 
-            idx = (-numpy.absolute(result_matrix.flatten())).argsort()[:5]
-            print(idx)
+            tmp = numpy.absolute(result_matrix.flatten())
+            idx = tmp.argsort()[-5:]
+            indexes = numpy.unravel_index(idx, result_matrix.shape)
+            print(indexes)
+            # largest_indexes = numpy.concatenate((largest_indexes, indexes))
 
             # set difference equal to 2
-            difference[rows[row] + 1][columns[key] + 1] = 2
+            difference[rows[row] + 1][columns[key] + 1] = 1
 
             # get current time
             t = time.time()
@@ -96,7 +108,7 @@ for key in results:
             # write the csv
             path = os.path.join(results_directory, results[key][i] + results[key][(i + 1) % len(results[key])] + key)
             numpy.savetxt(path, result_matrix, delimiter=',')
-
+            '''
             # write the histogram
             plt.hist(result_matrix, bins=50)
             path = research_directory + results[key][i] + results[key][(i + 1) % len(results[key])] + \
@@ -104,8 +116,16 @@ for key in results:
             plt.savefig(path)
             plt.close()
             print("done, time taken: " + str(time.time() - t))
+            '''
 
         else:
-            difference[rows[row] + 1][columns[key] + 1] = 1
+            difference[rows[row] + 1][columns[key] + 1] = 0
+
+    print(largest_indexes)
 
 print(difference)
+
+with open(results_directory + "output.csv", "w") as f:
+    writer = csv.writer(f)
+    writer.writerows(difference)
+f.close()
