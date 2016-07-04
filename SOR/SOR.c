@@ -86,7 +86,6 @@ int main(int argc, char** argv)
 {
    int err;                            // error code returned from api calls
 
-   cl_device_id device_id;             // compute device id 
    cl_context context;                 // compute context
    cl_command_queue commands;          // compute command queue
    cl_program program;                 // compute program
@@ -124,14 +123,14 @@ int main(int argc, char** argv)
    clGetPlatformIDs(dev_cnt, platform_ids, NULL);
 	
    // Connect to a compute device
-   int gpu = 1;
-   err = clGetDeviceIDs(platform_ids[1], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
-   if (err != CL_SUCCESS)
-   {
-       printf("Error: Failed to create a device group!\n");
-       return EXIT_FAILURE;
-   }
+   cl_uint deviceCount;
+   cl_device_id* devices;
+   clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, NULL, &deviceCount);
+   devices = (cl_device_id*) malloc(sizeof(cl_device_id) * deviceCount);
+   clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, deviceCount, devices, NULL);
 
+   cl_device_id device_id = devices[0];
+   
    char* value;
    size_t valueSize;
    // print device name
@@ -249,7 +248,7 @@ int main(int argc, char** argv)
    //print out the results
 
    FILE * fp;
-   fp = fopen("/scratch/crafton.b/SOR.csv", "w");
+   fp = fopen("/home/cbrian/SOR.csv", "w");
    
    for(i = 0; i < size_A; i++)
    {
