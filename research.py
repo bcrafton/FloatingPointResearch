@@ -82,13 +82,17 @@ for key in data:
                 # print the details
                 print(row + os.path.splitext(key)[0])
 
-                tmp = numpy.absolute(result_matrix.flatten())
-                idx = tmp.argsort()[-5:]
-                indexes = numpy.unravel_index(idx, result_matrix.shape)
-                # print(indexes)
-
                 # set difference equal to 2
                 difference[rows[row] + 1][columns[key] + 1] = 1
+
+                # get the indexes of largest values
+                abs = numpy.absolute(result_matrix.flatten())
+                indexes = abs.argsort()[-5:]
+                indexes = numpy.unravel_index(indexes, result_matrix.shape)
+                indexes = numpy.matrix(indexes)
+                indexes = indexes.T
+                for index in indexes:
+                    index = index.reshape()
 
                 # get current time
                 t = time.time()
