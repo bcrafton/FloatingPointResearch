@@ -1,0 +1,7 @@
+X,SPMV.csv,MD.csv,SOR.csv,Stencil2D.csv
+AMD_CPUAMD_GPU,1,1,1,1
+AMD_CPUintel,0,0,1,0
+AMD_CPUnVidia,0,1,1,1
+AMD_GPUintel,1,1,1,1
+AMD_GPUnVidia,1,1,1,1
+intelnVidia,0,1,1,1
