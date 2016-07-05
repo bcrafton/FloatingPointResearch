@@ -24,6 +24,12 @@ def write_histogram(data, key, i, j, result_matrix):
     plt.savefig(full_path)
     plt.close()
 
+def array_to_csv(array, path):
+    with open(path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerows(array)
+    f.close()
+
 data_directory = os.getcwd() + '\\data\\'
 analysis_directory = os.getcwd() + '\\analysis\\'
 
@@ -59,7 +65,7 @@ for key in data:
                 rows_inv[row_count] = row
                 row_count = row_count + 1
 
-difference = a = [['X'] * (len(columns)+1) for i in range(len(rows)+1)]
+difference = [['X'] * (len(columns)+1) for i in range(len(rows)+1)]
 
 for i in range(len(rows)):
     difference[i+1][0] = rows_inv[i]
@@ -71,6 +77,7 @@ for key in data:
     for i in range(len(data[key])):
         path = os.path.join(data_directory, data[key][i], key)
         matrix.append(genfromtxt(path, delimiter=','))
+    largest_values = []
     for i in range(len(data[key])):
         for j in range(i+1, len(data[key])):
             # get the result
@@ -78,7 +85,6 @@ for key in data:
             # difference matrix coordinates
             row = data[key][i] + data[key][j]
             col = key
-            largest_values = a = [[0] * (5) for i in range(len(data[key]))]
             if numpy.count_nonzero(result_matrix) != 0:
                 # print the details
                 print(row + os.path.splitext(key)[0])
@@ -93,8 +99,9 @@ for key in data:
                 indexes = numpy.matrix(indexes)
                 indexes = indexes.T
                 indexes = indexes.tolist()
-                for k in range(len(indexes)):
-                    print(result_matrix[tuple(indexes[k])])
+                largest_values = largest_values + indexes
+                #for k in range(len(indexes)):
+                #    print(result_matrix[tuple(indexes[k])])
 
                 # get current time
                 t = time.time()
@@ -110,12 +117,25 @@ for key in data:
             else:
                 difference[rows[row] + 1][columns[key] + 1] = 0
 
-    print(largest_values)
+    largest_values_results = [['X'] * (len(largest_values)+1) for i in range(len(rows)+1)]
+    for i in range(len(data[key])):
+        for j in range(i + 1, len(data[key])):
+            # get the result
+            result_matrix = numpy.subtract(matrix[i], matrix[j])
+            if numpy.count_nonzero(result_matrix) != 0:
+                # difference matrix coordinates
+                row = data[key][i] + data[key][j]
+                for k in range(len(largest_values)):
+                    largest_values_results[rows[row]+1][k+1] = result_matrix[tuple(largest_values[k])]
+    print(largest_values_results)
+    full_path = os.path.join(analysis_directory, "largest_values", key)
+    for i in range(len(rows)):
+        largest_values_results[i + 1][0] = rows_inv[i]
+    for i in range(len(largest_values)):
+        largest_values_results[0][i + 1] = largest_values[i]
+    array_to_csv(largest_values_results, full_path)
 
-with open(analysis_directory + "output.csv", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(difference)
-f.close()
+array_to_csv(difference, analysis_directory + "output.csv")
 
 
 
