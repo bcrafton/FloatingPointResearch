@@ -78,6 +78,7 @@ for key in data:
             # difference matrix coordinates
             row = data[key][i] + data[key][j]
             col = key
+            largest_values = a = [[0] * (5) for i in range(len(data[key]))]
             if numpy.count_nonzero(result_matrix) != 0:
                 # print the details
                 print(row + os.path.splitext(key)[0])
@@ -91,8 +92,9 @@ for key in data:
                 indexes = numpy.unravel_index(indexes, result_matrix.shape)
                 indexes = numpy.matrix(indexes)
                 indexes = indexes.T
-                for index in indexes:
-                    index = index.reshape()
+                indexes = indexes.tolist()
+                for k in range(len(indexes)):
+                    print(result_matrix[tuple(indexes[k])])
 
                 # get current time
                 t = time.time()
@@ -107,6 +109,8 @@ for key in data:
 
             else:
                 difference[rows[row] + 1][columns[key] + 1] = 0
+
+    print(largest_values)
 
 with open(analysis_directory + "output.csv", "w") as f:
     writer = csv.writer(f)
