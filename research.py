@@ -110,7 +110,7 @@ for key in data:
                 write_csv(data, key, i, j, result_matrix)
 
                 # write the histogram
-                #write_histogram(data, key, i, j, result_matrix)
+                write_histogram(data, key, i, j, result_matrix)
 
                 print("done, time taken: " + str(time.time() - t))
 
@@ -127,13 +127,13 @@ for key in data:
                 row = data[key][i] + data[key][j]
                 for k in range(len(largest_values)):
                     largest_values_results[rows[row]+1][k+1] = result_matrix[tuple(largest_values[k])]
-    print(largest_values_results)
     full_path = os.path.join(analysis_directory, "largest_values", key)
     for i in range(len(rows)):
         largest_values_results[i + 1][0] = rows_inv[i]
     for i in range(len(largest_values)):
         largest_values_results[0][i + 1] = largest_values[i]
     array_to_csv(largest_values_results, full_path)
+    print(largest_values_results)
 
 array_to_csv(difference, analysis_directory + "output.csv")
 
