@@ -126,7 +126,7 @@ for key in data:
                 # difference matrix coordinates
                 row = data[key][i] + data[key][j]
                 for k in range(len(largest_values)):
-                    largest_values_results[rows[row]+1][k+1] = result_matrix[tuple(largest_values[k])]
+                    largest_values_results[rows[row]+1][k+1] = [result_matrix[tuple(largest_values[k])],
     full_path = os.path.join(analysis_directory, "largest_values", key)
     for i in range(len(rows)):
         largest_values_results[i + 1][0] = rows_inv[i]
