@@ -30,10 +30,16 @@ def array_to_csv(array, path):
         writer.writerows(array)
     f.close()
 
-data_directory = os.getcwd() + '\\data\\'
-analysis_directory = os.getcwd() + '\\analysis\\'
+data_directory = os.path.join(os.getcwd(), "data")
+data_directory = os.getcwd() + "\\data\\"
+data_output_directory = os.path.join(data_directory, "output")
+data_output_directory = data_directory + "\\output\\"
+data_input_directory = os.path.join(data_directory, "input")
+data_input_directory = data_directory + "\\input\\"
+analysis_directory = os.path.join(os.getcwd(), "analysis")
+analysis_directory = os.getcwd() + "\\analysis\\"
 
-paths = glob.glob(data_directory + '*/*.csv')
+paths = glob.glob(data_output_directory + '*/*.csv')
 
 data = {}
 
@@ -43,7 +49,6 @@ for path in paths:
     except:
         data[os.path.basename(path)] = []
         data[os.path.basename(path)].append(os.path.basename(os.path.dirname(path)))
-
 
 columns = {}
 columns_inv = {}
@@ -75,7 +80,7 @@ for i in range(len(columns)):
 for key in data:
     matrix = []
     for i in range(len(data[key])):
-        path = os.path.join(data_directory, data[key][i], key)
+        path = os.path.join(data_output_directory, data[key][i], key)
         matrix.append(genfromtxt(path, delimiter=','))
     largest_values = []
     for i in range(len(data[key])):
@@ -110,13 +115,15 @@ for key in data:
                 write_csv(data, key, i, j, result_matrix)
 
                 # write the histogram
-                write_histogram(data, key, i, j, result_matrix)
+                #write_histogram(data, key, i, j, result_matrix)
 
                 print("done, time taken: " + str(time.time() - t))
 
             else:
                 difference[rows[row] + 1][columns[key] + 1] = 0
 
+    sor_input = genfromtxt(os.path.join(os.getcwd(), "data", "input", "intel", "SOR_in.csv"), delimiter=',')
+    print("SOR mean = ", numpy.mean(sor_input))
     largest_values_results = [['X'] * (len(largest_values)+1) for i in range(len(rows)+1)]
     for i in range(len(data[key])):
         for j in range(i + 1, len(data[key])):
@@ -126,12 +133,15 @@ for key in data:
                 # difference matrix coordinates
                 row = data[key][i] + data[key][j]
                 for k in range(len(largest_values)):
-                    largest_values_results[rows[row]+1][k+1] = [result_matrix[tuple(largest_values[k])],
+                    largest_values_results[rows[row] + 1][k + 1] = result_matrix[tuple(largest_values[k])]
     full_path = os.path.join(analysis_directory, "largest_values", key)
     for i in range(len(rows)):
         largest_values_results[i + 1][0] = rows_inv[i]
     for i in range(len(largest_values)):
-        largest_values_results[0][i + 1] = largest_values[i]
+        if key == "SOR.csv":
+            largest_values_results[0][i + 1] = [largest_values[i], sor_input[tuple(largest_values[i])]]
+        else:
+            largest_values_results[0][i + 1] = largest_values[i]
     array_to_csv(largest_values_results, full_path)
     print(largest_values_results)
 
