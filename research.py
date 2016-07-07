@@ -6,122 +6,135 @@ from numpy import genfromtxt
 import matplotlib.pyplot as plt
 import time
 
-def write_csv(data, key, i, j, result_matrix):
-    path = os.path.join(analysis_directory, "csv", data[key][i] + data[key][j])
+def write_csv(path, filename, matrix):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    full_path = os.path.join(path, key)
-    numpy.savetxt(full_path, result_matrix, delimiter=',')
+    full_path = os.path.join(path, filename)
+    numpy.savetxt(full_path, matrix, delimiter=',')
 
-def write_histogram(data, key, i, j, result_matrix):
-    path = os.path.join(analysis_directory, "histogram", data[key][i] + data[key][j])
+def write_histogram(path, filename, matrix):
     if not os.path.exists(path):
         os.makedirs(path)
-    full_path = os.path.join(path, os.path.splitext(key)[0] + ".jpg")
+    full_path = os.path.join(path, filename)
 
-    plt.hist(result_matrix, bins=50)
+    plt.hist(matrix, bins=50)
     plt.savefig(full_path)
     plt.close()
 
-def array_to_csv(array, path):
+def array_to_csv(path, array):
     with open(path, "w") as f:
         writer = csv.writer(f)
         writer.writerows(array)
     f.close()
 
+def get_boolean_result_matrix(benchmark_hardware_results_map, hardware_pairs, benchmarks):
+    num_rows = len(hardware_pairs) + 1
+    num_cols = len(benchmarks) + 1
+    boolean_result_matrix = [['X'] * num_cols for i in range(num_rows)]
+    for i in range(len(hardware_pairs)):
+        boolean_result_matrix[i + 1][0] = hardware_pairs[i]
+    for i in range(len(benchmarks)):
+        boolean_result_matrix[0][i + 1] = benchmarks[i]
+    for benchmark in benchmarks:
+        for hardware_pair in hardware_pairs:
+            row_index = hardware_pairs.index(hardware_pair) + 1
+            col_index = benchmarks.index(benchmark) + 1
+            if numpy.count_nonzero(benchmark_hardware_results_map[hardware_pair, benchmark]) != 0:
+                boolean_result_matrix[row_index][col_index] = 1
+            else:
+                boolean_result_matrix[row_index][col_index] = 0
+    path = os.path.join(analysis_directory, "boolean_matrix.csv")
+    array_to_csv(path, boolean_result_matrix)
+
+
+def get_largest_indexes_for(benchmark_hardware_results_map, hardware_pairs, benchmark):
+    largest_indexes = []
+    for hardware_pair in hardware_pairs:
+        if numpy.count_nonzero(benchmark_hardware_results_map[hardware_pair, benchmark]) != 0:
+            abs = numpy.absolute(benchmark_hardware_results_map[hardware_pair, benchmark].flatten())
+            indexes = abs.argsort()[-5:]
+            indexes = numpy.unravel_index(indexes, benchmark_hardware_results_map[hardware_pair, benchmark].shape)
+            indexes = numpy.matrix(indexes)
+            indexes = indexes.T
+            indexes = indexes.tolist()
+            largest_indexes = largest_indexes + indexes
+    return largest_indexes
+
+
 data_directory = os.path.join(os.getcwd(), "data")
-data_directory = os.getcwd() + "\\data\\"
 data_output_directory = os.path.join(data_directory, "output")
-data_output_directory = data_directory + "\\output\\"
 data_input_directory = os.path.join(data_directory, "input")
-data_input_directory = data_directory + "\\input\\"
+
 analysis_directory = os.path.join(os.getcwd(), "analysis")
-analysis_directory = os.getcwd() + "\\analysis\\"
+csv_directory = os.path.join(analysis_directory, "csv")
+histogram_directory = os.path.join(analysis_directory, "histogram")
 
-paths = glob.glob(data_output_directory + '*/*.csv')
+hardwares = ["amdcpu", "amdgpu", "intel", "nvidia"]
+benchmarks = ["md", "sor", "spmv", "stencil2d"]
+hardware_pairs = []
+# every possible comparison between the hardwares
+for i in range(len(hardwares)):
+    for j in range(i + 1, len(hardwares)):
+        hardware_pairs.append((hardwares[i], hardwares[j]))
 
-data = {}
+# the map between a hardware, benchmark pair
+#   and the result data
+#   and the input data
+benchmark_hardware_output_map = {}
+benchmark_hardware_input_map = {}
 
-for path in paths:
-    try:
-        data[os.path.basename(path)].append(os.path.basename(os.path.dirname(path)))
-    except:
-        data[os.path.basename(path)] = []
-        data[os.path.basename(path)].append(os.path.basename(os.path.dirname(path)))
+# the result matrix from each hardware pair's run of a benchmark
+benchmark_hardware_results_map = {}
 
-columns = {}
-columns_inv = {}
-column_count = 0
-for key in data:
-    columns[key] = column_count
-    columns_inv[column_count] = key
-    column_count = column_count + 1
+# load the benchmark results and input data for each hardware
+for hardware in hardwares:
+    for benchmark in benchmarks:
+        output_path = os.path.join(data_output_directory, hardware + "_" + benchmark + ".csv")
+        if os.path.isfile(output_path):
+            benchmark_hardware_output_map[(hardware, benchmark)] = genfromtxt(output_path, delimiter=',')
 
-rows = {}
-rows_inv = {}
-row_count = 0
-for key in data:
-    for i in range(len(data[key])):
-        for j in range(i+1, len(data[key])):
-            row = data[key][i] + data[key][j]
-            if row not in rows.keys():
-                rows[row] = row_count
-                rows_inv[row_count] = row
-                row_count = row_count + 1
+        input_path = os.path.join(data_input_directory, hardware + "_" + benchmark + ".csv")
+        if os.path.isfile(input_path):
+            benchmark_hardware_input_map[(hardware, benchmark)] = genfromtxt(input_path, delimiter=',')
 
-difference = [['X'] * (len(columns)+1) for i in range(len(rows)+1)]
-
-for i in range(len(rows)):
-    difference[i+1][0] = rows_inv[i]
-for i in range(len(columns)):
-    difference[0][i+1] = columns_inv[i]
-
-for key in data:
-    matrix = []
-    for i in range(len(data[key])):
-        path = os.path.join(data_output_directory, data[key][i], key)
-        matrix.append(genfromtxt(path, delimiter=','))
-    largest_values = []
-    for i in range(len(data[key])):
-        for j in range(i+1, len(data[key])):
+# for each bench mark
+for benchmark in benchmarks:
+    largest_indexes = []
+    # for each hardware pair
+    for hardware_pair in hardware_pairs:
+            # get current time
+            t = time.time()
             # get the result
-            result_matrix = numpy.subtract(matrix[i], matrix[j])
-            # difference matrix coordinates
-            row = data[key][i] + data[key][j]
-            col = key
-            if numpy.count_nonzero(result_matrix) != 0:
-                # print the details
-                print(row + os.path.splitext(key)[0])
-
-                # set difference equal to 2
-                difference[rows[row] + 1][columns[key] + 1] = 1
-
-                # get the indexes of largest values
-                abs = numpy.absolute(result_matrix.flatten())
-                indexes = abs.argsort()[-5:]
-                indexes = numpy.unravel_index(indexes, result_matrix.shape)
-                indexes = numpy.matrix(indexes)
-                indexes = indexes.T
-                indexes = indexes.tolist()
-                largest_values = largest_values + indexes
-                #for k in range(len(indexes)):
-                #    print(result_matrix[tuple(indexes[k])])
-
-                # get current time
-                t = time.time()
-
+            m0 = benchmark_hardware_output_map[hardware_pair[0], benchmark]
+            m1 = benchmark_hardware_output_map[hardware_pair[1], benchmark]
+            benchmark_hardware_results_map[hardware_pair, benchmark] = numpy.subtract(m0, m1)
+            # if there is a difference in the matrices
+            if numpy.count_nonzero(benchmark_hardware_results_map[hardware_pair, benchmark]) != 0:
                 # write the csv
-                write_csv(data, key, i, j, result_matrix)
+                matrix = benchmark_hardware_results_map[hardware_pair, benchmark]
+                filename = hardware_pair[0] + "_" + hardware_pair[1] + "_" + benchmark + ".csv"
+                write_csv(path=csv_directory, filename=filename, matrix=matrix)
 
                 # write the histogram
-                #write_histogram(data, key, i, j, result_matrix)
+                matrix = benchmark_hardware_results_map[hardware_pair, benchmark]
+                filename = hardware_pair[0] + "_" + hardware_pair[1] + benchmark + "_" + ".jpg"
+                #write_histogram(path=histogram_directory, filename=filename, matrix=matrix)
 
-                print("done, time taken: " + str(time.time() - t))
+                print(hardware_pair, benchmark)
 
-            else:
-                difference[rows[row] + 1][columns[key] + 1] = 0
+get_boolean_result_matrix(benchmark_hardware_results_map=benchmark_hardware_results_map, hardware_pairs=hardware_pairs,
+                          benchmarks=benchmarks)
 
+'''
+indexes = get_largest_indexes_for(benchmark_hardware_results_map=benchmark_hardware_results_map,
+                                  hardware_pairs=hardware_pairs, benchmark="sor")
+print(indexes)
+
+'''
+
+'''
+    junk?
     sor_input = genfromtxt(os.path.join(os.getcwd(), "data", "input", "intel", "SOR_in.csv"), delimiter=',')
     print("SOR mean = ", numpy.mean(sor_input))
     largest_values_results = [['X'] * (len(largest_values)+1) for i in range(len(rows)+1)]
@@ -146,6 +159,4 @@ for key in data:
     print(largest_values_results)
 
 array_to_csv(difference, analysis_directory + "output.csv")
-
-
-
+'''

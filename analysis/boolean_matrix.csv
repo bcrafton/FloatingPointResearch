@@ -1,0 +1,7 @@
+X,md,sor,spmv,stencil2d
+"('amdcpu', 'amdgpu')",1,1,1,1
+"('amdcpu', 'intel')",0,1,0,0
+"('amdcpu', 'nvidia')",1,1,1,1
+"('amdgpu', 'intel')",1,1,1,1
+"('amdgpu', 'nvidia')",1,1,1,1
+"('intel', 'nvidia')",1,1,1,1
