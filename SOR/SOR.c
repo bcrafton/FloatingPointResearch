@@ -16,6 +16,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #define M 100
 #define N 100
+
+#define INTEL 0
+#define NVIDIA 1
+#define AMD_CPU 2
+#define AMD_GPU 3
+
+#define HARDWARE NVIDIA
 ////////////////////////////////////////////////////////////////////////////////
 
  
@@ -125,11 +132,22 @@ int main(int argc, char** argv)
    // Connect to a compute device
    cl_uint deviceCount;
    cl_device_id* devices;
+
+#if(HARDWARE == INTEL)
+   clGetDeviceIDs(platform_ids[1], CL_DEVICE_TYPE_ALL, 0, NULL, &deviceCount);
+   devices = (cl_device_id*) malloc(sizeof(cl_device_id) * deviceCount);
+   clGetDeviceIDs(platform_ids[1], CL_DEVICE_TYPE_ALL, deviceCount, devices, NULL);
+#else
    clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 0, NULL, &deviceCount);
    devices = (cl_device_id*) malloc(sizeof(cl_device_id) * deviceCount);
    clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, deviceCount, devices, NULL);
+#endif
 
+#if(HARDWARE == AMD_CPU)
+   cl_device_id device_id = devices[1];
+#else
    cl_device_id device_id = devices[0];
+#endif
    
    char* value;
    size_t valueSize;
@@ -194,6 +212,42 @@ int main(int argc, char** argv)
        exit(1);
    }
 
+   FILE * fp;
+#if(HARDWARE == AMD_GPU)
+   fp = fopen("/home/cbrian/amdgpu_sor_in.csv", "w");
+#elif(HARDWARE == AMD_CPU)
+   fp = fopen("/home/cbrian/amdcpu_sor_in.csv", "w");
+#elif(HARDWARE == INTEL)
+   fp = fopen("/scratch/crafton.b/intel_sor_in.csv", "w");
+#elif(HARDWARE == NVIDIA)
+   fp = fopen("/scratch/crafton.b/nvidia_sor_in.csv", "w");
+#endif
+   
+   for(i = 0; i < size_A; i++)
+   {
+      if(((i + 1) % N) == 0)
+      fprintf(fp, "%f\n", h_A[i]);
+      else
+      fprintf(fp, "%f,", h_A[i]);
+   }
+   fprintf(fp, "\n");
+   
+   fclose(fp);
+   
+    // Query binary (PTX file) size
+    size_t bin_sz;
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, sizeof(size_t), &bin_sz, NULL);
+
+    // Read binary (PTX file) to memory buffer
+    unsigned char *bin = (unsigned char *)malloc(bin_sz);
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARIES, sizeof(unsigned char *), &bin, NULL);
+
+    // Save PTX to add_vectors_ocl.ptx
+    fp = fopen("SOR.ptx", "wb");
+    fwrite(bin, sizeof(char), bin_sz, fp);
+    fclose(fp);
+    free(bin);
+
    // Create the input and output arrays in device memory for our calculation
    d_A = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, mem_size_A, h_A, &err);
 
@@ -246,11 +300,17 @@ int main(int argc, char** argv)
    }
  
    //print out the results
-
-   FILE * fp;
-   fp = fopen("/home/cbrian/SOR.csv", "w");
+#if(HARDWARE == AMD_GPU)
+   fp = fopen("/home/cbrian/amdgpu_sor.csv", "w");
+#elif(HARDWARE == AMD_CPU)
+   fp = fopen("/home/cbrian/amdcpu_sor.csv", "w");
+#elif(HARDWARE == INTEL)
+   fp = fopen("/scratch/crafton.b/intel_sor.csv", "w");
+#elif(HARDWARE == NVIDIA)
+   fp = fopen("/scratch/crafton.b/nvidia_sor.csv", "w");
+#endif
    
-   for(i = 0; i < size_A; i++)
+   for(i = 0; i < (int) size_A; i++)
    {
       if(((i + 1) % N) == 0)
       fprintf(fp, "%f\n", h_A[i]);

@@ -78,6 +78,8 @@ for i in range(len(hardwares)):
     for j in range(i + 1, len(hardwares)):
         hardware_pairs.append((hardwares[i], hardwares[j]))
 
+benchmarks_with_input = ["sor"]
+
 # the map between a hardware, benchmark pair
 #   and the result data
 #   and the input data
@@ -97,6 +99,19 @@ for hardware in hardwares:
         input_path = os.path.join(data_input_directory, hardware + "_" + benchmark + ".csv")
         if os.path.isfile(input_path):
             benchmark_hardware_input_map[(hardware, benchmark)] = genfromtxt(input_path, delimiter=',')
+
+# verify inputs are the same
+for benchmark in benchmarks_with_input:
+    valid = 1
+    for hardware_pair in hardware_pairs:
+        m0 = benchmark_hardware_input_map[hardware_pair[0], benchmark]
+        m1 = benchmark_hardware_input_map[hardware_pair[1], benchmark]
+        result = numpy.subtract(m0, m1)
+        if numpy.count_nonzero(result) != 0:
+            print(hardware_pair[0], "and", hardware_pair[1], "have different input matrixes!")
+            valid = 0
+    if valid == 1:
+        print("All inputs are the same for", benchmark)
 
 # for each bench mark
 for benchmark in benchmarks:
@@ -118,45 +133,10 @@ for benchmark in benchmarks:
 
                 # write the histogram
                 matrix = benchmark_hardware_results_map[hardware_pair, benchmark]
-                filename = hardware_pair[0] + "_" + hardware_pair[1] + benchmark + "_" + ".jpg"
+                filename = hardware_pair[0] + "_" + hardware_pair[1] + "_" + benchmark + ".jpg"
                 #write_histogram(path=histogram_directory, filename=filename, matrix=matrix)
 
                 print(hardware_pair, benchmark)
 
 get_boolean_result_matrix(benchmark_hardware_results_map=benchmark_hardware_results_map, hardware_pairs=hardware_pairs,
                           benchmarks=benchmarks)
-
-'''
-indexes = get_largest_indexes_for(benchmark_hardware_results_map=benchmark_hardware_results_map,
-                                  hardware_pairs=hardware_pairs, benchmark="sor")
-print(indexes)
-
-'''
-
-'''
-    junk?
-    sor_input = genfromtxt(os.path.join(os.getcwd(), "data", "input", "intel", "SOR_in.csv"), delimiter=',')
-    print("SOR mean = ", numpy.mean(sor_input))
-    largest_values_results = [['X'] * (len(largest_values)+1) for i in range(len(rows)+1)]
-    for i in range(len(data[key])):
-        for j in range(i + 1, len(data[key])):
-            # get the result
-            result_matrix = numpy.subtract(matrix[i], matrix[j])
-            if numpy.count_nonzero(result_matrix) != 0:
-                # difference matrix coordinates
-                row = data[key][i] + data[key][j]
-                for k in range(len(largest_values)):
-                    largest_values_results[rows[row] + 1][k + 1] = result_matrix[tuple(largest_values[k])]
-    full_path = os.path.join(analysis_directory, "largest_values", key)
-    for i in range(len(rows)):
-        largest_values_results[i + 1][0] = rows_inv[i]
-    for i in range(len(largest_values)):
-        if key == "SOR.csv":
-            largest_values_results[0][i + 1] = [largest_values[i], sor_input[tuple(largest_values[i])]]
-        else:
-            largest_values_results[0][i + 1] = largest_values[i]
-    array_to_csv(largest_values_results, full_path)
-    print(largest_values_results)
-
-array_to_csv(difference, analysis_directory + "output.csv")
-'''
