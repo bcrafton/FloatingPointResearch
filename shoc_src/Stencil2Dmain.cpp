@@ -43,8 +43,12 @@
 // prototypes of auxiliary functions defined in this file
 void CheckOptions( const OptionParser& opts );
 
+#define INTEL 0
+#define NVIDIA 1
+#define AMD_CPU 2
+#define AMD_GPU 3
 
-
+#define HARDWARE AMD_CPU
 
 template<class T>
 void
