@@ -134,7 +134,7 @@ for benchmark in benchmarks:
                 # write the histogram
                 matrix = benchmark_hardware_results_map[hardware_pair, benchmark]
                 filename = hardware_pair[0] + "_" + hardware_pair[1] + "_" + benchmark + ".jpg"
-                #write_histogram(path=histogram_directory, filename=filename, matrix=matrix)
+                write_histogram(path=histogram_directory, filename=filename, matrix=matrix)
 
                 print(hardware_pair, benchmark)
 

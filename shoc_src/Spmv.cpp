@@ -16,7 +16,7 @@
 #define AMD_CPU 2
 #define AMD_GPU 3
 
-#define HARDWARE INTEL
+#define HARDWARE NVIDIA 
 
 using namespace std;
 
@@ -927,6 +927,61 @@ void RunTest(cl_device_id dev, cl_context ctx, cl_command_queue queue,
     h_rowDelimitersPad = new int[numRows+1];
     fill(h_vec, numRows, op.getOptionFloat("maxval"));
 
+		static char test = 0;
+		if(!test)
+		{
+#if(HARDWARE == AMD_GPU)
+			char* h_val_path = "/home/cbrian/amdgpu_spmv_h_val.csv";
+			char* h_cols_path = "/home/cbrian/amdgpu_spmv_h_cols.csv";
+			char* h_vec_path = "/home/cbrian/amdgpu_spmv_h_vec.csv";
+			char* h_rowDelimeters_path = "/home/cbrian/amdgpu_spmv_h_rowDelimeters.csv";
+#elif(HARDWARE == AMD_CPU)
+			char* h_val_path = "/home/cbrian/amdcpu_spmv_h_val.csv";
+			char* h_cols_path = "/home/cbrian/amdcpu_spmv_h_cols.csv";
+			char* h_vec_path = "/home/cbrian/amdcpu_spmv_h_vec.csv";
+			char* h_rowDelimeters_path = "/home/cbrian/amdcpu_spmv_h_rowDelimeters.csv";
+#elif(HARDWARE == INTEL)
+			char* h_val_path = "/scratch/crafton.b/intel_spmv_h_val.csv";
+			char* h_cols_path = "/scratch/crafton.b/intel_spmv_h_cols.csv";
+			char* h_vec_path = "/scratch/crafton.b/intel_spmv_h_vec.csv";
+			char* h_rowDelimeters_path = "/scratch/crafton.b/intel_spmv_h_rowDelimeters.csv";
+#elif(HARDWARE == NVIDIA)
+			char* h_val_path = "/scratch/crafton.b/nvidia_spmv_h_val.csv";
+			char* h_cols_path = "/scratch/crafton.b/nvidia_spmv_h_cols.csv";
+			char* h_vec_path = "/scratch/crafton.b/nvidia_spmv_h_vec.csv";
+			char* h_rowDelimeters_path = "/scratch/crafton.b/nvidia_spmv_h_rowDelimeters.csv";
+#endif
+			FILE * fp_h_val;
+			FILE * fp_h_vec;
+			FILE * fp_h_cols;
+			FILE * fp_h_rowDelimeters;
+			
+			fp_h_val = fopen(h_val_path, "w");
+			fp_h_vec = fopen(h_vec_path, "w");
+			fp_h_cols = fopen(h_cols_path, "w");
+			fp_h_rowDelimeters = fopen(h_rowDelimeters_path, "w");
+
+			int i;
+			for(i=0; i<nItems; i++)
+			{
+				fprintf(fp_h_val, "%f\n", (double)h_val[i]);
+				fprintf(fp_h_cols, "%f\n", (double)h_cols[i]);			
+			}
+			for(i=0; i<numRows; i++)
+			{
+				fprintf(fp_h_vec, "%f\n", (double)h_vec[i]);		
+			}
+			for(i=0; i<numRows+1; i++)
+			{
+				fprintf(fp_h_rowDelimeters, "%f\n", (double)h_rowDelimiters[i]);		
+			}
+			fclose(fp_h_val);
+			fclose(fp_h_cols);
+			fclose(fp_h_vec);
+			fclose(fp_h_rowDelimeters);
+		}
+		test = 1;
+
     // Set up the padded data structures
     int paddedSize = numRows + (PAD_FACTOR - numRows % PAD_FACTOR);
     h_out = new floatType[paddedSize];
@@ -939,12 +994,13 @@ void RunTest(cl_device_id dev, cl_context ctx, cl_command_queue queue,
     // Dispatch based on whether or not device supports OpenCL images
     if (deviceSupportsImages)
     {
+		printf("Supports Images\n");
         cout << "CSR Test\n";
         csrTest<floatType, clFloatType, true>
             (dev, ctx, compileFlags, queue, resultDB, op, h_val, h_cols,
              h_rowDelimiters, h_vec, h_out, numRows, nItems, refOut,
              false, maxImgWidth);
-
+/*
         // Test CSR kernels on padded data
         cout << "CSR Test -- Padded Data\n";
         csrTest<floatType,clFloatType, true>
@@ -958,6 +1014,7 @@ void RunTest(cl_device_id dev, cl_context ctx, cl_command_queue queue,
             (dev, ctx, compileFlags, queue, resultDB, op, h_val, h_cols,
              h_rowDelimiters, h_vec, h_out, numRows, nItems,
              refOut, false, paddedSize, maxImgWidth);
+*/
     } else {
         cout << "CSR Test\n";
         csrTest<floatType, clFloatType, false>
@@ -1029,14 +1086,14 @@ RunBenchmark(cl_device_id dev,
         (dev, ctx, queue, resultDB, op, spMacros, probSizes[sizeClass]);
 
     // If double precision is supported, run the DP test
-    if (checkExtension(dev, "cl_khr_fp64"))
+    if (0)//(checkExtension(dev, "cl_khr_fp64"))
     {
         cout << "Double precision tests\n";
         string dpMacros = "-DK_DOUBLE_PRECISION ";
         RunTest<double, cl_double>
             (dev, ctx, queue, resultDB, op, dpMacros, probSizes[sizeClass]);
     }
-    else if (checkExtension(dev, "cl_amd_fp64"))
+    else if (0)//(checkExtension(dev, "cl_amd_fp64"))
     {
         cout << "Double precision tests\n";
         string dpMacros = "-DAMD_DOUBLE_PRECISION ";
