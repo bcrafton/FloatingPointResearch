@@ -1,0 +1,5 @@
+X,"[6550, 3]","[6549, 3]","[6548, 3]","[6555, 3]","[12287, 3]","[6550, 3]","[6549, 3]","[6548, 3]","[6555, 3]","[12287, 3]","[6550, 3]","[6549, 3]","[6548, 3]","[6555, 3]","[12287, 3]"
+amdcpu,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+amdgpu,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+intel,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X
+nvidia,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
